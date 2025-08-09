@@ -1,0 +1,25 @@
+[package]
+name = "cvdos-lib"
+version = "0.1.0"
+edition = "2024"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+minhook = "0.8.0"
+
+windows = { version = "0.61.3", features = [
+    "Win32_System_Console",
+] }
+
+tokio = { version = "1.47.1", features = ["full"] }
+tokio-tungstenite = {version = "0.27.0", features = ["native-tls"] }
+futures-util = { version = "0.3.31", default-features = false, features = ["sink"] }
+
+thiserror = "2.0.12"
+log = { version = "0.4.27" }
+
+serde = { version = "1.0.219", features = ["derive"] }
+serde_json = "1.0.142"
+serde_repr = "0.1.20"
