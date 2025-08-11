@@ -1,10 +1,12 @@
-import os
+# import os
 import settings
 import typing
 from .options import cvdosOptions
 from .items import item_table
 from .locations import location_table
 from .regions import create_regions
+from .rules import create_rules
+from .patch import patch
 from worlds.AutoWorld import World, WebWorld
 from BaseClasses import Region, Location, Entrance, Item, ItemClassification, Tutorial
 
@@ -45,6 +47,11 @@ class cvdosWorld(World):
     # item_name_groups = {
     #     "weapons": {"sword", "lance"},
     # }
+    item_name_groups = {
+        "long_jump": {"Flying Armor soul", "Puppet Master soul", "Malphas soul"},
+        "high_jump": {"Malphas soul"},
+    }
+
 
     def create_regions(self) -> None:
         create_regions(self)
@@ -57,7 +64,8 @@ class cvdosWorld(World):
         data = item_table[item]
         return Item(item, data, self.item_name_to_id[item], self.player)
 
-    # def generate_output(self, output_directory: str) -> None:
-        # filename = f"{self.multiworld.get_out_file_name_base(self.player)}.patch"
-        # with open(os.path.join(output_directory, filename), 'w') as f:
-        #     f.write("test")
+    def set_rules(self) -> None:
+        create_rules(self)
+
+    def generate_output(self, output_directory: str) -> None:
+        patch(self, output_directory)

@@ -1,35 +1,38 @@
-use std::{fs::File, io::{stdin, BufRead}, mem::transmute, os::windows::io::FromRawHandle, sync::{Mutex, OnceLock}, thread, time::Duration};
+use std::{fs::File, io::{stdin, BufRead}, os::windows::io::FromRawHandle, sync::OnceLock, thread};
 
-use minhook::MinHook;
 use tokio::sync::mpsc::{self, Sender};
 use tokio_tungstenite::tungstenite::Message;
 use windows::Win32::{
     Foundation::*,
-    System::{Console::{AllocConsole, GetStdHandle, STD_OUTPUT_HANDLE}, LibraryLoader::GetModuleHandleA, Memory::{VirtualProtect, PAGE_PROTECTION_FLAGS, PAGE_READWRITE}, SystemServices::*},
+    System::{Console::{AllocConsole, GetStdHandle, STD_OUTPUT_HANDLE}, SystemServices::*},
 };
-use windows::core::*;
 
-use crate::{archipelago_rs::client::ArchipelagoClient, game_data::{ObjAttr, Enemy, OBJ_ATTR_LENGTH}};
+use crate::{
+    archipelago_rs::{client::ArchipelagoClient, protocol::GameData},
+    dra01::{dll_offset, dll_offsets::Offset, hook_functions, hooked_functions::dra_mesg_comm_get_message, patch_dra01, CUSTOM_MSG, DLL_BASE, G_WINDOW_SET_MAIN_WINDOW},
+};
 
 mod archipelago_rs;
+mod dra01;
 
-mod game_data;
-
-static mut DLL_BASE: usize = 0;
 static mut STDOUT_FILE: Option<File> = None;
 
 static TX: OnceLock<Sender<Vec<u8>>> = OnceLock::new();
-
-static DRA_MESG_COMM_GET_MESSAGE: OnceLock<extern "system" fn(u32) -> *const u8> = OnceLock::new();
-static G_WINDOW_SET_MAIN_WINDOW:  OnceLock<extern "system" fn(u32) -> u32>       = OnceLock::new();
-
-static CUSTOM_MSG: Mutex<[u8; 256]> = Mutex::new([0; 256]);
 
 #[unsafe(no_mangle)]
 extern "system" fn DllMain(_dll_module: HINSTANCE, call_reason: u32, _: *mut ()) -> bool {
     match call_reason {
         DLL_PROCESS_ATTACH => {
-            set_globals();
+            unsafe {
+                // enable console for debugging
+                if AllocConsole().is_ok() {
+                    if let Ok(std_handle) = GetStdHandle(STD_OUTPUT_HANDLE) {
+                        STDOUT_FILE = Some(File::from_raw_handle(std_handle.0 as *mut _));
+                    }
+                }
+            }
+
+            hook_functions();
             thread::spawn(|| {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(websocket());
@@ -42,38 +45,8 @@ extern "system" fn DllMain(_dll_module: HINSTANCE, call_reason: u32, _: *mut ())
     true
 }
 
-fn modify_game() {
-    unsafe {
-        let obj_attr_ptr = (DLL_BASE + 0x2755B0) as *mut ObjAttr;
-        let region_size = size_of::<ObjAttr>() * OBJ_ATTR_LENGTH;
-
-        let mut old_protect = PAGE_PROTECTION_FLAGS(0);
-        match VirtualProtect(
-            obj_attr_ptr as _,
-            region_size,
-            PAGE_READWRITE,
-            &mut old_protect,
-        ) {
-            Ok(_) => {
-                let region = std::slice::from_raw_parts_mut(obj_attr_ptr, 118);
-                region[Enemy::FlyingArmor.id()].soul_id = 0x01;
-
-                let mut dummy = PAGE_PROTECTION_FLAGS(0);
-                let _ = VirtualProtect(
-                    obj_attr_ptr as _,
-                    region_size,
-                    old_protect,
-                    &mut dummy,
-                );
-            }
-
-            Err(e) => println!("failed to modify game: {}", e),
-        }
-    }
-}
-
 async fn websocket() {
-    modify_game();
+    patch_dra01();
 
     let (tx, mut rx) = mpsc::channel::<Vec<u8>>(128);
     TX.set(tx.clone()).expect("msg");
@@ -130,30 +103,6 @@ async fn websocket() {
     }
 }
 
-fn set_globals() {
-    unsafe {
-        // enable console for debugging
-        if AllocConsole().is_ok() {
-            if let Ok(std_handle) = GetStdHandle(STD_OUTPUT_HANDLE) {
-                STDOUT_FILE = Some(File::from_raw_handle(std_handle.0 as *mut _));
-            }
-        }
-
-        // todo: if dra01 isn't detected, wait and try again
-        let base = GetModuleHandleA(s!("dra01.dll")).expect("msg");
-        DLL_BASE = base.0 as usize;
-
-        let fn_offset = DLL_BASE + 0x0716C0;
-        G_WINDOW_SET_MAIN_WINDOW.set(transmute(fn_offset)).expect("msg");
-        //-----
-        let fn_offset = base.0 as usize + 0x203F10;
-        let orig_addr = MinHook::create_hook(fn_offset as _, dra_mesg_comm_get_message as _).expect("create_hook failed");
-        DRA_MESG_COMM_GET_MESSAGE.set(transmute(orig_addr)).expect("msg");
-
-        MinHook::enable_all_hooks().expect("failed to enable hooks");
-    }
-}
-
 fn handle_command(data: &[u8]) {
     match data[0] {
         1 => { // receive item
@@ -170,7 +119,7 @@ fn handle_command(data: &[u8]) {
                     let offset = (asd >> 1) as usize;
 
                     unsafe {
-                        let ptr = (DLL_BASE + 0x9642AC) as *mut u8;
+                        let ptr = dll_offset(Offset::InventoryItems) as *mut u8;
                         // length is longer than it has to be here but w/e
                         let region = std::slice::from_raw_parts_mut(ptr, 0x6E);
 
@@ -190,8 +139,8 @@ fn handle_command(data: &[u8]) {
                 let offset = (data[1] >> 1) as usize;
 
                 unsafe {
-                    let ptr = (DLL_BASE + 0x9641C0) as *mut u8;
-                    let region = std::slice::from_raw_parts_mut(ptr, 0x40);
+                    let ptr = dll_offset(Offset::InventorySouls) as *mut u8;
+                    let region = std::slice::from_raw_parts_mut(ptr, 0x3E);
 
                     let shift_count = ((data[1] & 1)) * 4;
                     if (region[offset] >> shift_count) & 0b1111 < 9 {
@@ -207,7 +156,7 @@ fn handle_command(data: &[u8]) {
             if data.len() >= 2 {
                 if data[1] < 5 {
                     unsafe {
-                        let ptr = (DLL_BASE + 0x964344) as *mut u8;
+                        let ptr = dll_offset(Offset::InventoryMagicSeals) as *mut u8;
                         *ptr |= 1 << data[1];
                     }
 
@@ -243,22 +192,6 @@ fn received_message(msg_id: u32) {
 
     if let Some(orig_fn) = G_WINDOW_SET_MAIN_WINDOW.get() {
         orig_fn(0xFFF);
-    }
-}
-
-// fn write_pipe(buffer: &[u8], pipe: &HANDLE) {
-//     thread::sleep(Duration::from_millis(200));
-//     let mut bytes_written = 0;
-//     unsafe {
-//         WriteFile(*pipe, Some(buffer), Some(&mut bytes_written), None).expect("msg");
-//     }
-// }
-
-fn dra_mesg_comm_get_message(message: u32) -> *const u8 {
-    if message != 0xFFF && let Some(orig_fn) = DRA_MESG_COMM_GET_MESSAGE.get() {
-        orig_fn(message)
-    } else {
-        CUSTOM_MSG.lock().unwrap().as_ptr()
     }
 }
 
