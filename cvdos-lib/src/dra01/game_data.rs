@@ -4,7 +4,7 @@ pub const OBJ_ATTR_LENGTH: usize = 118;
 pub struct ObjAttr {
     create_fn: u64,
     update_fn: u64,
-    item1: u16,
+    pub item1: u16,
     item2: u16,
     unk1: u8,
     unk2: u8,
@@ -14,7 +14,7 @@ pub struct ObjAttr {
     soul_rarity: u8,
     attack: u8,
     defense: u8,
-    item_rarity: u8,
+    pub item_rarity: u8,
     unk3: u8,
     unk4: u8,
     pub soul_id: u8,
@@ -23,6 +23,19 @@ pub struct ObjAttr {
     resistance: u32,
     padding: u32,
 }
+
+#[repr(C)]
+pub struct EnmSetData {
+    x: i16,
+    y: i16,
+    id: u8, // should be 0?
+    type1: u8,
+    type2: u8,
+    unk: u8,
+    pub var1: u16,
+    var2: u16,
+}
+
 
 pub enum Enemy {
     Zombie,

@@ -8,10 +8,12 @@ pub enum Offset {
     ObjAttrTable,
 
     // "ram" offsets
+    DataPtr, // ? points to alldata.bin stuff that's been loaded to memory?
     FlagsGlobal,
     InventorySouls,
     InventoryItems,
     InventoryMagicSeals,
+    HardMode,
 }
 
 impl Offset {
@@ -25,10 +27,12 @@ impl Offset {
 
             ObjAttrTable          => 0x2755B0,
 
+            DataPtr               => 0x39BF08,
             FlagsGlobal           => 0x963ED4,
             InventorySouls        => 0x9641C0,
             InventoryItems        => 0x9642AC,
             InventoryMagicSeals   => 0x964344,
+            HardMode              => 0x964349,
         }
     }
 }
