@@ -52,7 +52,6 @@ class cvdosWorld(World):
         "high_jump": {"Malphas soul"},
     }
 
-
     def create_regions(self) -> None:
         create_regions(self)
 
@@ -61,7 +60,7 @@ class cvdosWorld(World):
             self.multiworld.itempool.append(self.create_item(name))
 
     def create_item(self, item: str) -> Item:
-        data = item_table[item]
+        data = item_table[item].item_class
         return Item(item, data, self.item_name_to_id[item], self.player)
 
     def set_rules(self) -> None:

@@ -28,12 +28,12 @@ pub struct ObjAttr {
 pub struct EnmSetData {
     x: i16,
     y: i16,
-    id: u8, // should be 0?
-    type1: u8,
-    type2: u8,
+    id: u8,
+    pub type1: u8,
+    pub type2: u8,
     unk: u8,
     pub var1: u16,
-    var2: u16,
+    pub var2: u16,
 }
 
 

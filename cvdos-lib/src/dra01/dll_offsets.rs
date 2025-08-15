@@ -1,6 +1,7 @@
 pub enum Offset {
     // functions
     GWindowSetMainWindow,
+    GetEnmList,
     EsEnemyDeadSub,
     DraMesgCommGetMessage,
 
@@ -22,6 +23,7 @@ impl Offset {
 
         match self {
             GWindowSetMainWindow  => 0x0716C0,
+            GetEnmList            => 0x014660,
             EsEnemyDeadSub        => 0x14AAD0,
             DraMesgCommGetMessage => 0x203F10,
 
