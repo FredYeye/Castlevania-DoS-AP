@@ -7,19 +7,20 @@ def patch(self, output_directory: str) -> None:
 
     patch_data = bytearray()
 
-    for k in self.multiworld.get_locations(self.player):
-        match location_table[k.name]:
-            case StaticItem(map_id, enm_slot):
-                patch_data.extend([0x01, map_id, enm_slot])
-            case Boss(id):
-                patch_data.extend([0x02, id])
+    for k in self.get_locations():
+        if k.address != None:
+            match location_table[k.name]:
+                case StaticItem(map_id, enm_slot):
+                    patch_data.extend([0x01, map_id, enm_slot])
+                case Boss(id):
+                    patch_data.extend([0x02, id])
 
-        if item_table[k.item.name].is_soul == False:
-            patch_data.extend([0x11])
-        else:
-            patch_data.extend([0x12])
-        
-        patch_data.extend([item_table[k.item.name].item_id])
+            if item_table[k.item.name].is_soul == False:
+                patch_data.extend([0x11])
+            else:
+                patch_data.extend([0x12])
+            
+            patch_data.extend([item_table[k.item.name].item_id])
 
     with open(os.path.join(output_directory, filename), 'wb') as f:
         f.write(patch_data)

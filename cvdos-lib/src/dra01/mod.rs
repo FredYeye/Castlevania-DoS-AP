@@ -1,8 +1,8 @@
-use std::{ffi::c_void, mem::transmute, slice::from_raw_parts_mut, sync::{Mutex, OnceLock}};
+use std::{ffi::c_void, mem::transmute, path::PathBuf, sync::{Mutex, OnceLock}, thread, time::Duration};
 use minhook::MinHook;
 use windows::{core::s, Win32::System::{LibraryLoader::GetModuleHandleA, Memory::{VirtualProtect, PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS, PAGE_READWRITE}}};
 
-use crate::{dra01::{dll_offsets::Offset, game_data::{Enemy, EnmSetData, ObjAttr, OBJ_ATTR_LENGTH}, hooked_functions::{dra_mesg_comm_get_message, es_enemy_dead_sub}}, handle_command};
+use crate::{dra01::{dll_offsets::Offset, game_data::{EnmSetData, ObjAttr, OBJ_ATTR_LENGTH}, hooked_functions::{dra_mesg_comm_get_message, es_enemy_dead_sub}}};
 
 pub mod hooked_functions;
 pub mod game_data;
@@ -27,7 +27,9 @@ pub static CUSTOM_MSG: Mutex<[u8; 256]> = Mutex::new([0; 256]);
 
 pub fn hook_functions() {
     unsafe {
-        // todo: if dra01 isn't detected, wait and try again
+        // todo: if dra01 isn't detected, wait and try again?
+        // it seems to be loaded in the intro though... and then reloaded once entering the game
+
         let dll_base = GetModuleHandleA(s!("dra01.dll")).expect("msg").0 as usize;
         DLL_BASE = dll_base;
 
@@ -68,8 +70,13 @@ fn enm_set_first(arg1: u64) {
 
 // patch dra01.dll in memory (temporary patch until dll unloads)
 pub fn patch_dra01() {
-    apply_ap_patch();
-    item_vanish_timer();
+    if let Some(patch) = find_patch_file() {
+        apply_ap_patch(&patch);
+        item_vanish_timer();
+        println!("Found and applied patch {:?}", patch);
+    } else {
+        println!("No *.patch file found, no changes applied.");
+    }
 }
 
 // modifies page protection flags, call obj_attr_restore_protection_flags() to restore
@@ -81,13 +88,7 @@ fn obj_attr_get_list() -> (&'static mut [ObjAttr], PAGE_PROTECTION_FLAGS) {
         match virtual_protect(obj_attr_ptr as _, region_size, PAGE_READWRITE) {
             Ok(old_protect) => {
                 let region = std::slice::from_raw_parts_mut(obj_attr_ptr, 118);
-                // region[Enemy::FlyingArmor.id()].soul_id = 0xFF;
-                // region[Enemy::FlyingArmor.id()].item1 = 0x93;
-                // region[Enemy::FlyingArmor.id()].item_rarity = 0xFF;
-
                 (region, old_protect)
-
-                // let _ = virtual_protect(obj_attr_ptr as _, region_size, old_protect);
             }
 
             Err(e) => todo!("failed to modify game: {}", e),
@@ -101,8 +102,21 @@ fn obj_attr_restore_protection_flags(old_protect: PAGE_PROTECTION_FLAGS) {
     let _ = virtual_protect(obj_attr_ptr as _, region_size, old_protect);
 }
 
-fn apply_ap_patch() {
-    let data = std::fs::read("AP_28556804547610715814_P1_fred.patch").expect("msg");
+fn find_patch_file() -> Option<PathBuf> {
+    let current_dir = std::env::current_dir().expect("Error accessing current directory");
+    for entry in std::fs::read_dir(&current_dir).expect("Error reading current directory") {
+        if let Ok(entry) = entry {
+            if entry.path().extension().and_then(|ext| ext.to_str()) == Some("patch") {
+                return Some(entry.path());
+            }
+        }
+    }
+
+    None
+}
+
+fn apply_ap_patch(path: &PathBuf) {
+    let data = std::fs::read(path).expect("msg");
     
     let (obj_attr_list, old_protect) = obj_attr_get_list();
 
@@ -147,15 +161,13 @@ fn apply_ap_patch() {
 
                 match data[pos + 2] {
                     0x11 => { // item
-                        let offset = data[pos + 1] as usize;
-                        // obj_attr_list[offset].soul_id = data[pos + 2];
                         obj_attr_list[offset].soul_id = 0xFF;
                         obj_attr_list[offset].item1 = data[pos + 3] as u16;
                         obj_attr_list[offset].item_rarity = 0xFF;
                     }
 
                     0x12 => { // soul
-                        obj_attr_list[data[pos + 1] as usize].soul_id = data[pos + 3];
+                        obj_attr_list[offset].soul_id = data[pos + 3];
                     }
 
                     _ => todo!(),
@@ -219,13 +231,6 @@ fn get_enm_list(map_id: u16) -> &'static mut [EnmSetData] {
             // todo: what to do about the length param? could scan for list terminator probably
             let region = std::slice::from_raw_parts_mut(ptr3, 13);
             region
-            // soul pedestal
-            // region[5].type1 = 4;
-            // region[5].type2 = 5;
-
-            // region[5].var1 = 0;
-            // soul ID
-            // region[5].var2 = 0x08;
         }
     } else {
         todo!()

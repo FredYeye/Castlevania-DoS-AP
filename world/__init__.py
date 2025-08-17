@@ -1,21 +1,12 @@
-# import os
 import settings
-import typing
 from .options import cvdosOptions
 from .items import item_table
 from .locations import location_table
 from .regions import create_regions
 from .rules import create_rules
 from .patch import patch
-from worlds.AutoWorld import World, WebWorld
-from BaseClasses import Region, Location, Entrance, Item, ItemClassification, Tutorial
-
-class cvdosItem(Item):  # or from Items import MyGameItem
-    game = "cvdos"  # name of the game/world this item is from
-
-class cvdosLocation(Location):  # or from Locations import MyGameLocation
-    game = "cvdos"  # name of the game/world this location is in
-
+from worlds.AutoWorld import World
+from BaseClasses import Item
 
 class MyGameSettings(settings.Group):
     class RomFile(settings.SNESRomPath):
@@ -31,25 +22,16 @@ class cvdosWorld(World):
     # settings: typing.ClassVar[cvdosSettings]  # will be automatically assigned from type hint
     topology_present = True  # show path to required location checks in spoiler
 
-    # ID of first item and location, could be hard-coded but code may be easier
-    # to read with this as a property.
-    base_id = 0x86420
-    # instead of dynamic numbering, IDs could be part of data
-
     # The following two dicts are required for the generation to know which
     # items exist. They could be generated from json or something else. They can
     # include events, but don't have to since events will be placed manually.
-    item_name_to_id = {name: id for id, name in enumerate(item_table, base_id)}
-    location_name_to_id = {name: id for id, name in enumerate(location_table, base_id)}
+    item_name_to_id = {name: id for id, name in enumerate(item_table, 1)}
+    location_name_to_id = {name: id for id, name in enumerate(location_table, 1)}
 
     # Items can be grouped using their names to allow easy checking if any item
     # from that group has been collected. Group names can also be used for !hint
-    # item_name_groups = {
-    #     "weapons": {"sword", "lance"},
-    # }
     item_name_groups = {
-        "long_jump": {"Flying Armor soul", "Puppet Master soul", "Malphas soul"},
-        "high_jump": {"Malphas soul"},
+        "long_jump": {"Flying Armor soul"},
     }
 
     def create_regions(self) -> None:
@@ -65,6 +47,16 @@ class cvdosWorld(World):
 
     def set_rules(self) -> None:
         create_rules(self)
+        # print("create rules")
+        # set_rule(self.get_entrance("09-1A"),
+        #         lambda state: state.has_group("long_jump", self.player))
+        # set_rule(self.get_entrance("0D-10"),
+        #         lambda state: state.has_group("long_jump", self.player))
+
+        # map_15 = self.get_region("15")
+        # water_loc = Location(self.player, "Water switch", None, map_15)
+        # water_loc.place_locked_item(Item("Lowered water level", ItemClassification.progression, None, self.player))
+        # map_15.locations.append(water_loc)
 
     def generate_output(self, output_directory: str) -> None:
         patch(self, output_directory)
