@@ -47,16 +47,6 @@ class cvdosWorld(World):
 
     def set_rules(self) -> None:
         create_rules(self)
-        # print("create rules")
-        # set_rule(self.get_entrance("09-1A"),
-        #         lambda state: state.has_group("long_jump", self.player))
-        # set_rule(self.get_entrance("0D-10"),
-        #         lambda state: state.has_group("long_jump", self.player))
-
-        # map_15 = self.get_region("15")
-        # water_loc = Location(self.player, "Water switch", None, map_15)
-        # water_loc.place_locked_item(Item("Lowered water level", ItemClassification.progression, None, self.player))
-        # map_15.locations.append(water_loc)
 
     def generate_output(self, output_directory: str) -> None:
         patch(self, output_directory)

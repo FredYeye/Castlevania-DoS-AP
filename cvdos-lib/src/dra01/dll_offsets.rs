@@ -10,6 +10,7 @@ pub enum Offset {
 
     // "ram" offsets
     DataPtr, // ? points to alldata.bin stuff that's been loaded to memory?
+    MagicCirclePos,
     FlagsGlobal,
     InventorySouls,
     InventoryItems,
@@ -30,6 +31,7 @@ impl Offset {
             ObjAttrTable          => 0x2755B0,
 
             DataPtr               => 0x39BF08,
+            MagicCirclePos        => 0x95C7FC,
             FlagsGlobal           => 0x963ED4,
             InventorySouls        => 0x9641C0,
             InventoryItems        => 0x9642AC,

@@ -25,4 +25,12 @@ item_table: dict[str, ItemType] = {
     "Blunt Sword"        : ItemType(ItemClassification.filler,      False, 0x7B),
     "Scarf"              : ItemType(ItemClassification.filler,      False, 0xB9),
     "Balore soul"        : ItemType(ItemClassification.progression, True,  0x74),
+    "Combat Knife"       : ItemType(ItemClassification.filler,      False, 0x45),
+    "Foie Gras"          : ItemType(ItemClassification.filler,      False, 0x20),
+
+    "Magic Seal 2"       : ItemType(ItemClassification.progression, False, 0x3F),
+    "Breastplate"        : ItemType(ItemClassification.filler,      False, 0xA0),
+    "Doppelganger"       : ItemType(ItemClassification.useful,      True,  0x76),
+    "Fleuret"            : ItemType(ItemClassification.filler,      False, 0x4A),
+    "Three 7s"           : ItemType(ItemClassification.filler,      False, 0x99),
 }

@@ -65,6 +65,34 @@ loc_68: dict[str, Loc] = {
     "Wizardry Lab - Blunt Sword"  : StaticItem(0x68, 0),
 }
 
+loc_6F: dict[str, Loc] = {
+    "Wizardry Lab - Combat Knife" : StaticItem(0x6F, 2),
+}
+
+loc_71: dict[str, Loc] = {
+    "Wizardry Lab - Foie Gras" : StaticItem(0x71, 0),
+}
+
+loc_82: dict[str, Loc] = {
+    "Garden of Madness - Breastplate" : StaticItem(0x82, 1),
+}
+
+loc_82b: dict[str, Loc] = {
+    "Garden of Madness - Fleuret" : StaticItem(0x82, 0),
+}
+
+loc_85: dict[str, Loc] = {
+    "Garden of Madness - Magic Seal 2" : StaticItem(0x85, 1),
+}
+
+loc_9C: dict[str, Loc] = {
+    "Garden of Madness - Three 7s" : StaticItem(0x9C, 0),
+}
+
+loc_A6: dict[str, Loc] = {
+    "Garden of Madness - Doppelganger" : StaticItem(0xA6, 8),
+}
+
 location_table = {
     **loc_03,
     **loc_09,
@@ -78,4 +106,11 @@ location_table = {
     **loc_63,
     **loc_64,
     **loc_68,
+    **loc_6F,
+    **loc_71,
+    **loc_82,
+    **loc_82b,
+    **loc_85,
+    **loc_9C,
+    **loc_A6,
 }
