@@ -31,8 +31,14 @@ class cvdosWorld(World):
     # Items can be grouped using their names to allow easy checking if any item
     # from that group has been collected. Group names can also be used for !hint
     item_name_groups = {
-        "long_jump": {"Flying Armor soul", "Malphas soul", "Puppet Master soul"},
-        "height": {"Malphas soul", "Puppet Master soul"},
+        # todo: add panther?
+        "long_jump_no_flight": {"Flying Armor soul", "Malphas soul", "Puppet Master soul"},
+        "long_jump": {"Flying Armor soul", "Malphas soul", "Puppet Master soul", "Bat Company soul", "Hippogryph soul"},
+
+        "height": {"Malphas soul", "Puppet Master soul", "Bat Company soul", "Hippogryph soul"},
+
+        "flight": {"Bat Company soul", "Hippogryph soul"},
+        "small": {"Puppet Master soul", "Bat Company soul"},
     }
 
     def create_regions(self) -> None:

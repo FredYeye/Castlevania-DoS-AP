@@ -2,6 +2,10 @@ import os
 from .locations import *
 from .items import *
 
+# patch format:
+# if item      (6 bytes): 0x01, map_lo, map_hi, enm_slot, item/soul type, item/soul id)
+# if boss drop (4 bytes): 0x02, boss id, item/soul type, item/soul id)
+
 def patch(self, output_directory: str) -> None:
     filename = f"{self.multiworld.get_out_file_name_base(self.player)}.patch"
 
@@ -11,7 +15,9 @@ def patch(self, output_directory: str) -> None:
         if k.address != None:
             match location_table[k.name]:
                 case StaticItem(map_id, enm_slot):
-                    patch_data.extend([0x01, map_id, enm_slot])
+                    map_id_hi = map_id >> 8
+                    map_id_lo = map_id & 0xFF
+                    patch_data.extend([0x01, map_id_lo, map_id_hi, enm_slot])
                 case Boss(id):
                     patch_data.extend([0x02, id])
 

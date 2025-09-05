@@ -1,8 +1,11 @@
 pub enum Offset {
     // functions
-    GWindowSetMainWindow,
     GetEnmList,
+    GItemAddRmkItemNum,
+    GItemSet,
+    GWindowSetMainWindow,
     EsEnemyDeadSub,
+    DevEv08_00,
     DraMesgCommGetMessage,
 
     // "rom" offsets
@@ -23,9 +26,12 @@ impl Offset {
         use Offset::*;
 
         match self {
-            GWindowSetMainWindow  => 0x0716C0,
             GetEnmList            => 0x014660,
+            GItemAddRmkItemNum    => 0x047B10,
+            GItemSet              => 0x047BB0,
+            GWindowSetMainWindow  => 0x0716C0,
             EsEnemyDeadSub        => 0x14AAD0,
+            DevEv08_00            => 0x1EC730,
             DraMesgCommGetMessage => 0x203F10,
 
             ObjAttrTable          => 0x2755B0,

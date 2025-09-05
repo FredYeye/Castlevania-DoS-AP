@@ -1,174 +1,234 @@
 from worlds.generic.Rules import set_rule
-from BaseClasses import ItemClassification, Item, Location
+from BaseClasses import CollectionState, ItemClassification, Item, Location
 from Utils import visualize_regions
+from .regions import EntrReq, maps
 
-# todo: clean up this mess
+def medium_height(state: CollectionState, p: int) -> bool:
+    return state.has("Malphas soul", p) or state.has("flight", p)
+
+def big_height(state: CollectionState, p: int) -> bool:
+    return state.has("Malphas soul", p) and state.has("Puppet Master soul", p) or state.has("flight", p)
+
+def height_and_distance(state: CollectionState, p: int) -> bool: # todo: name?
+    return medium_height(state, p) or state.has("Flying Armor soul", p) and state.has("Puppet Master soul", p)
 
 def create_rules(self) -> None:
-    set_rule(self.get_entrance("09-09b"), lambda state: state.has_group("long_jump", self.player))
-    set_rule(self.get_entrance("0D-10"), lambda state: state.has_group("long_jump", self.player))
-    set_rule(self.get_entrance("26-1F"), lambda state: state.has_group("long_jump", self.player))
-    set_rule(self.get_entrance("42-3B"), lambda state: state.has_group("long_jump", self.player))
+    p = self.player
 
-    set_rule(self.get_entrance("05-05b"), lambda state: state.has("Malphas soul", self.player) and
-                                                        state.has("Puppet Master soul", self.player))
+    for map_id, map_data in maps.items():
+        for conn in map_data.connections:
+            if conn.req != None:
+                entrance_str = map_id + "-" + conn.destination + conn.extra_id
+                entrance = self.get_entrance(entrance_str)
+
+                match conn.req:
+                    case EntrReq.HEIGHT:
+                        set_rule(entrance, lambda state: state.has_group("height", p))
+
+                    case EntrReq.MEDIUM_HEIGHT:
+                        set_rule(entrance, lambda state: medium_height(state, p))
+
+                    case EntrReq.BIG_HEIGHT:
+                        set_rule(entrance, lambda state: big_height(state, p))
+
+                    case EntrReq.HEIGHT_AND_DISTANCE:
+                        set_rule(entrance, lambda state: height_and_distance(state, p))
+
+                    case EntrReq.DISTANCE:
+                        set_rule(entrance, lambda state: state.has_group("long_jump", p))
+
+                    case EntrReq.BALORE:
+                        set_rule(entrance, lambda state: state.has("Balore soul", p))
+
+                    case EntrReq.MAGIC_SEAL_2:
+                        set_rule(entrance, lambda state: state.has("Magic Seal 2", p))
+
+                    case EntrReq.MAGIC_SEAL_3:
+                        set_rule(entrance, lambda state: state.has("Magic Seal 3", p))
+
+                    case EntrReq.MAGIC_SEAL_4:
+                        set_rule(entrance, lambda state: state.has("Magic Seal 4", p))
+                    
+                    case EntrReq.MAGIC_SEAL_5:
+                        set_rule(entrance, lambda state: state.has("Magic Seal 5", p))
+
+                    case EntrReq.SMALL:
+                        set_rule(entrance, lambda state: state.has_group("small", p))
+
+                    case EntrReq.RAHAB:
+                        set_rule(entrance, lambda state: state.has("Rahab soul", p))
+
+                    case EntrReq.ZEPHYR:
+                        set_rule(entrance, lambda state: state.has("Zephyr soul", p))
+
+                    case EntrReq.BIGGER_HEIGHT:
+                        set_rule(entrance, lambda state: state.has_group("flight", p))
+
+                    case EntrReq.BALORE_OR_MEDIUM_HEIGHT:
+                        set_rule(entrance, lambda state: state.has("Balore soul", p) or
+                                                         medium_height(state, p))
+
+                    case EntrReq.RAHAB_OR_HEIGHT:
+                        set_rule(entrance, lambda state: state.has("Rahab Soul", p) or
+                                                         state.has_group("height", p))
+
+                    case EntrReq.RAHAB_AND_HEIGHT:
+                        set_rule(entrance, lambda state: state.has("Rahab Soul", p) and
+                                                         state.has_group("height", p))
+                    
+                    case EntrReq.MAGIC_SEAL_5_AND_HEIGHT:
+                        set_rule(entrance, lambda state: state.has("Magic Seal 5", p) and
+                                                  state.has_group("height", p))
+
+    set_rule(self.get_location("The Dark Chapel - Hoop Earring"), lambda state: medium_height(state, p))
+    set_rule(self.get_location("The Dark Chapel - High Mind Up"), lambda state: state.has_group("height", p))
+    set_rule(self.get_location("The Dark Chapel - Power Belt"), lambda state: state.has_group("height", p))
+    set_rule(self.get_location("The Dark Chapel - Long Sword"), lambda state: height_and_distance(state, p))
+    set_rule(self.get_location("The Dark Chapel - Kotetsu"), lambda state: big_height(state, p))
+    set_rule(self.get_location("The Dark Chapel - UMA News 3-2"), lambda state: state.has_group("long_jump", p)) # technically can be reached with a backdash jump, but probably not fun
+
+    set_rule(self.get_location("The Lost Village - Crimson Cloak"), lambda state: height_and_distance(state, p))
+
+    set_rule(self.get_location("Demon Guest House - War Fatigues"), lambda state: state.has("Balore soul", p) and
+                                                                           state.has_group("height", p))
+    set_rule(self.get_location("Demon Guest House - UMA News 2-4"), lambda state: state.has("Balore soul", p) and
+                                                                           state.has_group("height", p))
+
+    set_rule(self.get_location("Subterranean Hell - UMA News 1-3"), lambda state: state.has_group("height", p))
+    set_rule(self.get_location("Garden of Madness - Small Sword"), lambda state: state.has_group("height", p))
+
+    set_rule(self.get_location("Condemned Tower - Silver Stud"), lambda state: state.has_group("height", p))
+    set_rule(self.get_location("Condemned Tower - UMA News 2-3"), lambda state: state.has_group("height", p))
+
+    set_rule(self.get_location("Silenced Ruins - Rare Ring"), lambda state: state.has("Balore soul", p))
+
+    set_rule(self.get_location("Wizardry Lab - Serenity Robe"), lambda state: state.has("Rahab soul", p))
+    set_rule(self.get_location("Wizardry Lab - Super Potion"), lambda state: state.has("Rahab soul", p))
+    set_rule(self.get_location("Wizardry Lab - Bloody Stud"), lambda state: state.has("Rahab soul", p))
+    set_rule(self.get_location("Demon Guest House - Mana Prism"), lambda state: state.has("Paranoia soul", p)), # mini paranoia must also be defeated
+    set_rule(self.get_location("The Pinnacle - Aguni"), lambda state: state.has("Paranoia soul", p)),
+
+    # height is technically not needed as you can get the item and suspend out
+    set_rule(self.get_location("The Abyss - Hippogryph soul"), lambda state: state.has_group("height", p)),
 
     # water lever
-    map_15 = self.get_region("15")
-    water_loc = Location(self.player, "15: Water lever", None, map_15)
-    water_loc.place_locked_item(Item("Lowered water level", ItemClassification.progression, None, self.player))
-    map_15.locations.append(water_loc)
-    set_rule(self.get_entrance("15-16"), lambda state: state.has("Lowered water level", self.player))
-    set_rule(self.get_entrance("16-15"), lambda state: state.has("Lowered water level", self.player))
-    set_rule(self.get_entrance("16-7E"), lambda state: state.has("Lowered water level", self.player))
-
-    # balore blocks
-    set_rule(self.get_entrance("67-70"), lambda state: state.has("Balore soul", self.player))
-    set_rule(self.get_entrance("70-67"), lambda state: state.has("Balore soul", self.player))
-    set_rule(self.get_entrance("70-6F"), lambda state: state.has("Balore soul", self.player))
-    set_rule(self.get_entrance("67-64"), lambda state: state.has("Balore soul", self.player))
-    set_rule(self.get_entrance("6C-71"), lambda state: state.has("Balore soul", self.player))
-    set_rule(self.get_entrance("6C-72"), lambda state: state.has("Balore soul", self.player) or
-                                                       state.has("Malphas soul", self.player))
+    region = self.get_region("15")
+    loc = Location(p, "15: Water lever", None, region)
+    loc.place_locked_item(Item("Lowered water level", ItemClassification.progression, None, p))
+    region.locations.append(loc)
+    set_rule(self.get_entrance("15-16"), lambda state: state.has("Lowered water level", p))
+    set_rule(self.get_entrance("16-15"), lambda state: state.has("Lowered water level", p))
+    set_rule(self.get_entrance("16-7E"), lambda state: state.has("Lowered water level", p))
 
     # drawbridge switch
-    map_16b = self.get_region("16b")
-    drawbridge_switch_loc = Location(self.player, "16b: Drawbridge switch", None, map_16b)
-    drawbridge_switch_loc.place_locked_item(Item("Lowered drawbridge", ItemClassification.filler, None, self.player))
-    map_16b.locations.append(drawbridge_switch_loc)
-    set_rule(self.get_entrance("16-16b"), lambda state: state.has("Lowered drawbridge", self.player) or
-                                                        state.has("Malphas soul", self.player))
-    set_rule(self.get_entrance("16b-16"), lambda state: state.has("Lowered drawbridge", self.player))
-
-    set_rule(self.get_entrance("B1-B7"), lambda state: state.has("Magic Seal 2", self.player))
-    set_rule(self.get_entrance("BA-B6"), lambda state: state.has("Magic Seal 2", self.player))
-    set_rule(self.get_entrance("8E-8D"), lambda state: state.has("Magic Seal 2", self.player))
-    set_rule(self.get_entrance("3E-23"), lambda state: state.has("Magic Seal 3", self.player))
-    set_rule(self.get_entrance("FC-FE"), lambda state: state.has("Magic Seal 3", self.player))
-    set_rule(self.get_entrance("C8b-C7h"), lambda state: state.has("Magic Seal 3", self.player))
-
-    set_rule(self.get_location("The Dark Chapel - Hoop Earring"), lambda state: state.has("Malphas soul", self.player))
-
-    set_rule(self.get_location("The Dark Chapel - High Mind Up"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_location("The Dark Chapel - Power Belt"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_location("The Dark Chapel - Long Sword"), lambda state: state.has("Malphas soul", self.player) or
-                                                                              state.has("Flying Armor soul", self.player) and
-                                                                              state.has("Puppet Master soul", self.player))
-
-    set_rule(self.get_location("The Lost Village - Crimson Cloak"), lambda state: state.has("Malphas soul", self.player) or
-                                                                           state.has("Flying Armor soul", self.player) and
-                                                                           state.has("Puppet Master soul", self.player))
-
-    set_rule(self.get_entrance("08-08b"), lambda state: state.has("Malphas soul", self.player) or
-                                                        state.has("Flying Armor soul", self.player) and
-                                                        state.has("Puppet Master soul", self.player))
-
-    set_rule(self.get_entrance("83-83b"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("8F-8E"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("4D-4C"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("4Cb-4B"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_entrance("38-21"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("38-37"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("38-2E"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("38-2F"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("38-32"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("38-20"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_entrance("20-26"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_entrance("1E-1D"), lambda state: state.has("Malphas soul", self.player))
-
-    set_rule(self.get_location("Demon Guest House - War Fatigues"), lambda state: state.has("Balore soul", self.player) and
-                                                                           state.has_group("height", self.player))
-    set_rule(self.get_location("Demon Guest House - UMA News 2-4"), lambda state: state.has("Balore soul", self.player) and
-                                                                           state.has_group("height", self.player))
-    
-    set_rule(self.get_entrance("43b-42"), lambda state: state.has("Malphas soul", self.player))
-
-    set_rule(self.get_entrance("41-3A"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("3A-3E"), lambda state: state.has("Malphas soul", self.player))
-
-    set_rule(self.get_entrance("4C-4Cb"), lambda state: state.has("Puppet Master soul", self.player))
-    set_rule(self.get_entrance("4Cb-4C"), lambda state: state.has("Puppet Master soul", self.player))
-    
-    set_rule(self.get_entrance("45-45b"), lambda state: state.has("Puppet Master soul", self.player))
-    set_rule(self.get_entrance("45b-45"), lambda state: state.has("Puppet Master soul", self.player))
-
-    set_rule(self.get_entrance("AF-AFb"), lambda state: state.has("Puppet Master soul", self.player))
-    set_rule(self.get_entrance("AFb-AF"), lambda state: state.has("Puppet Master soul", self.player))
-
-    # Rahab soul
-    # todo: try PM...
-    set_rule(self.get_entrance("100-FE"), lambda state: state.has("Rahab soul", self.player))
-
-    set_rule(self.get_entrance("100-FF"), lambda state: state.has("Rahab soul", self.player))
-    set_rule(self.get_entrance("FF-100"), lambda state: state.has("Rahab soul", self.player))
-
-    set_rule(self.get_entrance("FF-FD"), lambda state: state.has("Rahab soul", self.player))
-    set_rule(self.get_entrance("FD-FF"), lambda state: state.has("Rahab soul", self.player) and
-                                                       state.has_group("height", self.player))
-    
-    set_rule(self.get_entrance("FD-FA"), lambda state: state.has("Rahab soul", self.player))
-
-    set_rule(self.get_entrance("F8-F8b"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("F9-F8"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_entrance("F7-F8b"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("F7-F3"), lambda state: state.has_group("height", self.player) or 
-                                                       state.has("Rahab Soul", self.player))
-    
-    set_rule(self.get_location("Subterranean Hell - UMA News 1-3"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("F5-F6"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_location("Garden of Madness - Small Sword"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_entrance("99-99b"), lambda state: state.has("Rahab soul", self.player))
-    set_rule(self.get_entrance("99b-99"), lambda state: state.has("Rahab soul", self.player))
-
-    set_rule(self.get_entrance("91-91b"), lambda state: state.has("Rahab soul", self.player))
-    set_rule(self.get_entrance("91b-91"), lambda state: state.has("Rahab soul", self.player))
-
-    set_rule(self.get_entrance("F1-F2"), lambda state: state.has_group("long_jump", self.player))
-    set_rule(self.get_entrance("ED-EF"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_entrance("EC-EA"), lambda state: state.has("Malphas soul", self.player) or
-                                                       state.has("Flying Armor soul", self.player) and
-                                                       state.has("Puppet Master soul", self.player))
-    
-    set_rule(self.get_entrance("EC-ECb"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("ECc-ECb"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("ECd-ECc"), lambda state: state.has_group("height", self.player))
-    
-    set_rule(self.get_entrance("EE-103"), lambda state: state.has_group("long_jump", self.player))
-
-    set_rule(self.get_entrance("B9-B9b"), lambda state: state.has("Puppet Master soul", self.player))
-    set_rule(self.get_entrance("B9b-B9"), lambda state: state.has("Puppet Master soul", self.player))
-    set_rule(self.get_entrance("BCb-B9b"), lambda state: state.has_group("height", self.player))
-
-    set_rule(self.get_location("The Dark Chapel - Kotetsu"), lambda state: state.has("Malphas soul", self.player) and
-                                                                           state.has("Puppet Master soul", self.player))
-    set_rule(self.get_location("The Dark Chapel - UMA News 3-2"), lambda state: state.has_group("long_jump", self.player)) # technically can be reached with a backdash jump, but probably not fun
+    region = self.get_region("16b")
+    loc = Location(p, "16b: Drawbridge switch", None, region)
+    loc.place_locked_item(Item("Lowered drawbridge", ItemClassification.filler, None, p))
+    region.locations.append(loc)
+    set_rule(self.get_entrance("16-16b"), lambda state: state.has("Lowered drawbridge", p) or
+                                                        medium_height(state, p))
+    set_rule(self.get_entrance("16b-16"), lambda state: state.has("Lowered drawbridge", p))
 
     # BCb switch
-    map_BCb = self.get_region("BCb")
-    switch_loc = Location(self.player, "BCb: Gate Switch", None, map_BCb)
-    switch_loc.place_locked_item(Item("Opened gate", ItemClassification.filler, None, self.player)) # filler?
-    map_BCb.locations.append(switch_loc)
-    set_rule(self.get_entrance("BC-BCb"), lambda state: state.has("Opened gate", self.player))
-    set_rule(self.get_entrance("BCb-BC"), lambda state: state.has("Opened gate", self.player))
+    region = self.get_region("BCb")
+    loc = Location(p, "BCb: Gate Switch", None, region)
+    loc.place_locked_item(Item("Opened gate (TDC)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    set_rule(self.get_entrance("BC-BCb"), lambda state: state.has("Opened gate (TDC)", p))
+    set_rule(self.get_entrance("BCb-BC"), lambda state: state.has("Opened gate (TDC)", p))
 
-    set_rule(self.get_location("Condemned Tower - Silver Stud"), lambda state: state.has_group("height", self.player))
+    # todo: upon defeating gergoth, the player drops to C7 and new access rules
+    # should be set for traversing the C7_ regions
+    set_rule(self.get_entrance("C7h-C2"), lambda state: state.has_group("long_jump", p) or
+                                                        state.has_group("long_jump_no_flight", p, 2))
 
-    set_rule(self.get_entrance("CB-C7b"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("C5-C7c"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("CA-C7d"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("C4-C4b"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("C9-C7f"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_location("Condemned Tower - UMA News 2-3"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("C3-C0"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("C3-C7g"), lambda state: state.has_group("height", self.player))
-    set_rule(self.get_entrance("C8-C8b"), lambda state: state.has_group("height", self.player))
+    set_rule(self.get_entrance("C0-C0b"), lambda state: state.has("Tower Key", p))
+    set_rule(self.get_entrance("C0b-C0"), lambda state: state.has("Tower Key", p))
 
-    visualize_regions(self.multiworld.get_region("Menu", self.player), "my_world.puml")
+    # 8Cb switch
+    region = self.get_region("8Cb")
+    loc = Location(p, "8Cb: Gate Switch", None, region)
+    loc.place_locked_item(Item("Opened gate (GoM)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    set_rule(self.get_entrance("8C-8Cb"), lambda state: state.has("Opened gate (GoM)", p))
+    set_rule(self.get_entrance("8Cb-8C"), lambda state: state.has("Opened gate (GoM)", p))
+
+    # 129b switch
+    map_129b = self.get_region("129b")
+    switch_loc = Location(p, "129b: Gate Switch", None, map_129b)
+    switch_loc.place_locked_item(Item("Opened gate (CCT)", ItemClassification.filler, None, p)) # todo: filler?
+    map_129b.locations.append(switch_loc)
+    set_rule(self.get_entrance("129-129b"), lambda state: state.has("Opened gate (CCT)", p))
+    set_rule(self.get_entrance("129b-129"), lambda state: state.has("Opened gate (CCT)", p))
+    set_rule(self.get_entrance("129b-128"), lambda state: state.has("Opened gate (CCT)", p) and
+                                                          state.has_group("height", p))
+
+    # F9b switch
+    region = self.get_region("F9b")
+    loc = Location(p, "F9b: Gate Switch", None, region)
+    loc.place_locked_item(Item("Opened gate (SH)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    # todo: enabling this seems to make some locations unreachable. for now, disable it...
+    # set_rule(self.get_entrance("F9-F9b"), lambda state: state.has("Opened gate (SH)", p))
+    set_rule(self.get_entrance("F9b-F9"), lambda state: state.has("Opened gate (SH)", p))
+
+    # 6Db switch
+    region = self.get_region("6Db")
+    loc = Location(p, "6Db: Gate Switch", None, region)
+    loc.place_locked_item(Item("Opened gate (WL)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    set_rule(self.get_entrance("6D-6Db"), lambda state: state.has("Opened gate (WL)", p))
+    set_rule(self.get_entrance("6Db-6D"), lambda state: state.has("Opened gate (WL)", p))
+
+    # todo: E8-E8b needs (rahab + PM + skeleton ape) or (rahab + bone ark)
+    set_rule(self.get_entrance("E8-E8b"), lambda state: state.has("Rahab soul", p))
+
+    # 5Db switch
+    region = self.get_region("5Db")
+    loc = Location(p, "5Db: Gate Switch", None, region)
+    loc.place_locked_item(Item("Opened gate (WL 2)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    set_rule(self.get_entrance("5D-5Db"), lambda state: state.has("Opened gate (WL 2)", p))
+    set_rule(self.get_entrance("5Db-5D"), lambda state: state.has("Opened gate (WL 2)", p))
+
+    # 0E switch
+    region = self.get_region("0E")
+    loc = Location(p, "0E: Dynamite Switch", None, region)
+    loc.place_locked_item(Item("Opened floor (TLV)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    set_rule(self.get_entrance("0E-0D"), lambda state: state.has("Opened floor (TLV)", p) and
+                                                       state.has_group("height", p))
+    set_rule(self.get_entrance("0D-0E"), lambda state: state.has("Opened floor (TLV)", p))
+
+    # 06 switch
+    region = self.get_region("06")
+    loc = Location(p, "06: Dynamite Switch", None, region)
+    loc.place_locked_item(Item("Opened floor (TLV 2)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    set_rule(self.get_entrance("06-1A"), lambda state: state.has("Opened floor (TLV 2)", p) and
+                                                       state.has_group("height", p))
+    set_rule(self.get_entrance("1A-06"), lambda state: state.has("Opened floor (TLV 2)", p))
+
+    # 49 switch
+    region = self.get_region("49")
+    loc = Location(p, "49: Gate Switch", None, region)
+    loc.place_locked_item(Item("Opened gate (DGH)", ItemClassification.filler, None, p)) # todo: filler?
+    region.locations.append(loc)
+    set_rule(self.get_entrance("49-4A"), lambda state: state.has("Opened gate (DGH)", p))
+    set_rule(self.get_entrance("4A-49"), lambda state: state.has("Opened gate (DGH)", p))
+
+    # 90 mina event
+    region = self.get_region("90")
+    loc = Location(p, "90: Mina doppelganger event", None, region)
+    loc.place_locked_item(Item("Mina doppelganger event", ItemClassification.progression, None, p))
+    region.locations.append(loc)
+    set_rule(loc, lambda state: state.has("Mina's Talisman", p))
+    set_rule(self.get_entrance("CC-D8"), lambda state: state.has("Mina doppelganger event", p))
+
+    region = self.get_region("15D")
+    loc = Location(p, "15D: Defeat Menace", None, region)
+    loc.place_locked_item(Item("Victory", ItemClassification.progression, None, p))
+    region.locations.append(loc)
+    self.multiworld.completion_condition[p] = lambda state: state.has("Victory", p)
+
+    # visualize_regions(self.multiworld.get_region("Menu", p), "my_world.puml")

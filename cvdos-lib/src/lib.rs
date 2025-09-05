@@ -32,7 +32,6 @@ extern "system" fn DllMain(_dll_module: HINSTANCE, call_reason: u32, _: *mut ())
                 }
             }
 
-            hook_functions();
             thread::spawn(|| {
                 let rt = tokio::runtime::Runtime::new().unwrap();
                 rt.block_on(websocket());
@@ -45,7 +44,9 @@ extern "system" fn DllMain(_dll_module: HINSTANCE, call_reason: u32, _: *mut ())
     true
 }
 
+// todo: rename function lol
 async fn websocket() {
+    hook_functions();
     patch_dra01();
 
     let (tx, mut rx) = mpsc::channel::<Vec<u8>>(128);

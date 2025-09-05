@@ -1,12 +1,10 @@
-use crate::dra01::{dll_offset, dll_offsets::Offset, game_data::{Enemy, MagicCirclePos, ObjAttr, OBJ_ATTR_LENGTH}, BALORE_DEFEAT, CUSTOM_MSG, DLL_BASE, DRA_MESG_COMM_GET_MESSAGE, ENM_SET_FIRST, ES_ENEMY_DEAD_SUB, G_ITEM_SET};
+use crate::dra01::{add_soul, dll_offset, dll_offsets::Offset, game_data::{Enemy, ObjAttr}, BALORE_DEFEAT, CUSTOM_MSG, DEV_EV_08_00, DLL_BASE, DRA_MESG_COMM_GET_MESSAGE, ENM_SET_FIRST, ES_ENEMY_DEAD_SUB, G_ITEM_ADD_RMK_ITEM_NUM, G_ITEM_SET, MINA_DATA};
 
 // originally, receiving a soul is what re-opens boss doors.
 // this will open the doors if the killed enemy is a boss.
 // not an optimal solution since you can miss the item if you leave!
 // but it works for now. a proper fix would be to make the item itself open the doors.
 pub fn es_enemy_dead_sub(p_obj_data: *mut u8) {
-    // let mut old_hard_mode = None;
-
     unsafe {
         // todo: create an Enemy fn that returns all boss IDs that should open doors
         // actually, not all bosses will call this function!
@@ -19,13 +17,12 @@ pub fn es_enemy_dead_sub(p_obj_data: *mut u8) {
             let effective_luck = (DLL_BASE + 0x964482) as *mut u16;
             effective_luck.write(4095);
 
-            // set flying armor position to the magic circle, to prevent items
+            // set flying armor's position to the middle of the room, to prevent his item
             // dropping out of bounds.
-            let mc_pos = dll_offset(Offset::MagicCirclePos) as *const MagicCirclePos;
             let p_obj_x = p_obj_data.add(0x2C) as *mut u32;
             let p_obj_y = p_obj_data.add(0x30) as *mut u32;
-            p_obj_x.write((*mc_pos).x);
-            p_obj_y.write((*mc_pos).y);
+            p_obj_x.write(0x0010_0000);
+            p_obj_y.write(0x0005_0000);
         }
     }
 
@@ -58,7 +55,9 @@ pub fn balore_defeat(p_obj_data: *mut u64, a: u64, b: u64, c:u64) {
                     let pos_x = (8 << 16) as u64;
                     let pos_y = (6 << 16) as u64;
                     let pos = pos_x | (pos_y << 32);
-                    orig_fn(&pos, 0xB8, 0);
+
+                    let item = obj_attr[Enemy::Balore.id() as usize].item1;
+                    orig_fn(&pos, item as u32, 0); // todo: drop the correct item!
 
                     // open boss doors. temp fix! since you can miss the item this way
                     let p_flags_global = dll_offset(Offset::FlagsGlobal) as *mut u8;
@@ -81,5 +80,29 @@ pub fn enm_set_first(arg1: u64) {
 
     if let Some(orig_fn) = ENM_SET_FIRST.get() {
         orig_fn(arg1);
+    }
+}
+
+// mina's talisman event function
+pub fn dev_ev_08_00(a: *const u8) {
+    unsafe {
+        let state_before = a.add(0x0E).read();
+        
+        if let Some(orig_fn) = DEV_EV_08_00.get() {
+            orig_fn(a);
+        }
+        
+        let state_after = a.add(0x0E).read();
+
+        // receiving item from arikado
+        if state_before == 0 && state_after == 1 {
+            if MINA_DATA.0 {
+                add_soul(MINA_DATA.1);
+            } else {
+                if let Some(orig_fn) = G_ITEM_ADD_RMK_ITEM_NUM.get() {
+                    let _ = orig_fn(MINA_DATA.1 as u32);
+                }
+            }
+        }
     }
 }
