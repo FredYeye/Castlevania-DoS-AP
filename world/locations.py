@@ -45,7 +45,7 @@ loc_40:  dict[str, Loc] = { "Demon Guest House - UMA News 2-2"      : StaticItem
 loc_43b: dict[str, Loc] = { "Demon Guest House - High Potion"       : StaticItem(0x43, 0)  }
 loc_4C:  dict[str, Loc] = { "Demon Guest House - High Mind Up"      : StaticItem(0x4C, 0)  }
 loc_52:  dict[str, Loc] = { "Demon Guest House - UMA News 1-2"      : StaticItem(0x52, 0)  }
-loc_39:  dict[str, Loc] = { "Demon Guest House - Paranoia soul"     : Boss(0x6F)           }
+loc_39:  dict[str, Loc] = { "Demon Guest House - Paranoia"          : Boss(0x6F)           }
 loc_22:  dict[str, Loc] = { "Demon Guest House - Olrox's Suit"      : StaticItem(0x22, 0)  }
 loc_3D:  dict[str, Loc] = { "Demon Guest House - Mana Prism"        : StaticItem(0x3D, 6)  }
 loc_56:  dict[str, Loc] = { "Demon Guest House - Rune Ring"         : StaticItem(0x56, 0)  }
@@ -89,7 +89,7 @@ loc_BCb: dict[str, Loc] = { "The Dark Chapel - Kotetsu"             : StaticItem
                             "The Dark Chapel - High Potion"         : StaticItem(0xBC, 2)  }
 
 # todo: item will sink...
-loc_FE:  dict[str, Loc] = { "Subterranean Hell - Rahab Soul"        : Boss(0x6B)           }
+loc_FE:  dict[str, Loc] = { "Subterranean Hell - Rahab"             : Boss(0x6B)           }
 loc_FF:  dict[str, Loc] = { "Subterranean Hell - Chain Mail"        : StaticItem(0xFF, 0)  ,
                             "Subterranean Hell - High Mind Up"      : StaticItem(0xFF, 2)  ,
                             "Subterranean Hell - Rusty Food Tin"    : StaticItem(0xFF, 3)  }

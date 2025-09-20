@@ -133,7 +133,7 @@ item_table: dict[str, ItemType] = {
     "Magic Seal 5"       : ItemType(ItemClassification.progression, False, 0x42), # 42 is gorgon soul. but why?
 
     # Mine of Judgment
-    "Death soul"         : ItemType(ItemClassification.filler,      True,  0x59),
+    "Death soul"         : ItemType(ItemClassification.filler,      True,  0x58),
 
     # The Abyss
     "Hippogryph soul"    : ItemType(ItemClassification.progression, True,  0x78),

@@ -79,6 +79,10 @@ def create_rules(self) -> None:
                     case EntrReq.MAGIC_SEAL_5_AND_HEIGHT:
                         set_rule(entrance, lambda state: state.has("Magic Seal 5", p) and
                                                   state.has_group("height", p))
+                    
+                    case EntrReq.MAGIC_SEAL_3_AND_RAHAB:
+                        set_rule(entrance, lambda state: state.has("Magic Seal 3", p) and
+                                                  state.has("Rahab soul", p))
 
     set_rule(self.get_location("The Dark Chapel - Hoop Earring"), lambda state: medium_height(state, p))
     set_rule(self.get_location("The Dark Chapel - High Mind Up"), lambda state: state.has_group("height", p))

@@ -24,6 +24,7 @@ class EntrReq(Enum):
     RAHAB_AND_HEIGHT = 16
     FLIGHT = 17
     MAGIC_SEAL_5_AND_HEIGHT = 18,
+    MAGIC_SEAL_3_AND_RAHAB = 19,
 
 @dataclass
 class Entr():
@@ -111,7 +112,10 @@ maps: dict[str, Map] = {
     "42" : Map([Entr("3B", req=EntrReq.DISTANCE), Entr("3C"), Entr("43b"), Entr("45b")]),
     "43" : Map([Entr("3C")]),
     "43b" : Map([Entr("42", req=EntrReq.MEDIUM_HEIGHT)], loc_43b),
-    "44" : Map([Entr("3F"), Entr("49")]), # todo: blocked by 3 soul walls
+
+    # todo: blocked by 3 soul walls (axe, clown, ukoback)
+    # for now, require rahab (which is needed (verify?) to reach the ukoback enemy)
+    "44" : Map([Entr("3F", req=EntrReq.RAHAB), Entr("49")]),
     "45" : Map([Entr("45b", req=EntrReq.SMALL), Entr("4A")]),
     "45b" : Map([Entr("42"), Entr("45", req=EntrReq.SMALL)]), # left side
     "46" : Map([Entr("38"), Entr("4B")]),
@@ -186,7 +190,7 @@ maps: dict[str, Map] = {
     "84" : Map([Entr("82"), Entr("85")]),
     "85" : Map([Entr("8B"), Entr("84"), Entr("A5")], loc_85),
     "86" : Map([Entr("83b")], loc_86),
-    "87" : Map([Entr("8C"), Entr("8D"), Entr("9E")]),
+    "87" : Map([Entr("8C"), Entr("8D", req=EntrReq.MAGIC_SEAL_2), Entr("9E")]),
     "88" : Map([Entr("83"), Entr("8F")]),
     "89" : Map([Entr("82"), Entr("83"), Entr("A6", "lower"), Entr("A6", "upper")]),
     "8A" : Map([Entr("82"), Entr("90", req=EntrReq.MAGIC_SEAL_5)]),
@@ -335,7 +339,7 @@ maps: dict[str, Map] = {
     "FD" : Map([Entr("FA", req=EntrReq.RAHAB), Entr("FF", req=EntrReq.RAHAB_AND_HEIGHT)]),
     "FE" : Map([Entr("FC"), Entr("100")], loc_FE),
     "FF" : Map([Entr("FD", req=EntrReq.RAHAB), Entr("100", req=EntrReq.RAHAB)], loc_FF),
-    "100" : Map([Entr("FE", req=EntrReq.RAHAB), Entr("FF", req=EntrReq.RAHAB)]),
+    "100" : Map([Entr("FE", req=EntrReq.MAGIC_SEAL_3_AND_RAHAB), Entr("FF", req=EntrReq.RAHAB)]),
     "101" : Map([Entr("7B"), Entr("E8b")]),
     "102" : Map([Entr("6Db"), Entr("E9")]),
     "103" : Map([Entr("EE"), Entr("10A")]),
