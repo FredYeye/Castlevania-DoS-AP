@@ -4,11 +4,11 @@ use tokio::sync::mpsc::{self, Sender};
 use tokio_tungstenite::tungstenite::Message;
 use windows::Win32::{
     Foundation::*,
-    System::{Console::{AllocConsole, GetStdHandle, STD_OUTPUT_HANDLE}, SystemServices::*},
+    System::{Console::{AllocConsole, GetStdHandle, STD_OUTPUT_HANDLE}, SystemServices::DLL_PROCESS_ATTACH},
 };
 
 use crate::{
-    archipelago_rs::{client::ArchipelagoClient, protocol::GameData},
+    archipelago_rs::{client::ArchipelagoClient, protocol::{GameData, JSONMessagePart, PrintJSON, ServerMessage}},
     dra01::{dll_offset, dll_offsets::Offset, hook_functions, hooked_functions::dra_mesg_comm_get_message, patch_dra01, CUSTOM_MSG, DLL_BASE, G_WINDOW_SET_MAIN_WINDOW},
 };
 
@@ -59,7 +59,7 @@ async fn websocket() {
     let slot = stdin().lock().lines().next().unwrap().expect("Failed to slot name");
 
     let mut client = ArchipelagoClient::new(&server).await.expect("Failed to establish connection");
-    let game = "Super Metroid";
+    let game = "cvdos";
     client
         .connect(&game, &slot, None, Some(7), vec!["AP".to_string()])
         .await.expect("Failed to connect");
@@ -68,34 +68,79 @@ async fn websocket() {
 
     // listen for AP packets
     let receiver_task = tokio::spawn(async move {
-        while let Ok(opt_msg) = receiver.recv().await && let Some(msg) = opt_msg {
-            println!("recv'd packet: {:?}\n", msg);
+        while let Ok(opt_msg) = receiver.recv().await {
+            if let Some(msg) = opt_msg {
+                match msg {
+                    ServerMessage::RoomInfo(room_info) => todo!(),
 
-            match msg {
-                // ServerMessage::RoomInfo(room_info) => todo!(),
-                // ServerMessage::ConnectionRefused(connection_refused) => todo!(),
-                // ServerMessage::Connected(connected) => todo!(),
-                // ServerMessage::ReceivedItems(received_items) => todo!(),
-                // ServerMessage::LocationInfo(location_info) => todo!(),
-                // ServerMessage::RoomUpdate(room_update) => todo!(),
-                // ServerMessage::Print(print) => todo!(),
-                // ServerMessage::PrintJSON(print_json) => todo!(),
-                // ServerMessage::DataPackage(data_package) => todo!(),
-                // ServerMessage::Bounced(bounced) => todo!(),
-                // ServerMessage::InvalidPacket(invalid_packet) => todo!(),
-                // ServerMessage::Retrieved(retrieved) => todo!(),
-                // ServerMessage::SetReply(set_reply) => todo!(),
-                _ => (),
+                    ServerMessage::ConnectionRefused(connection_refused) => {
+                        println!("Connection refused:");
+                        for e in connection_refused.errors {
+                            println!("{}", e);
+                        }
+                    }
+
+                    ServerMessage::Connected(connected) => todo!(),
+                    ServerMessage::ReceivedItems(received_items) => todo!(),
+                    ServerMessage::LocationInfo(location_info) => todo!(),
+                    ServerMessage::RoomUpdate(room_update) => todo!(),
+                    ServerMessage::Print(print) => todo!(),
+
+                    ServerMessage::PrintJSON(print_json) => {
+                        match print_json {
+                            PrintJSON::ItemSend { data, receiving, item } => todo!(),
+                            PrintJSON::ItemCheat { data, receiving, item, team } => todo!(),
+                            PrintJSON::Hint { data, receiving, item, found } => todo!(),
+                            
+                            PrintJSON::Join { data, team, slot, tags } => {
+                                for d in data {
+                                    println!("{:?}", d);
+                                }
+                            }
+
+                            PrintJSON::Part { data, team, slot } => todo!(),
+                            PrintJSON::Chat { data, team, slot, message } => todo!(),
+                            PrintJSON::ServerChat { data, message } => todo!(),
+                            
+                            PrintJSON::Tutorial { data } => {
+                                for d in data {
+                                    println!("{:?}", d);
+                                }
+                            }
+                            
+                            PrintJSON::TagsChanged { data, team, slot, tags } => todo!(),
+                            PrintJSON::CommandResult { data } => todo!(),
+                            PrintJSON::AdminCommandResult { data } => todo!(),
+                            PrintJSON::Goal { data, team, slot } => todo!(),
+                            PrintJSON::Release { data, team, slot } => todo!(),
+                            PrintJSON::Collect { data, team, slot } => todo!(),
+                            PrintJSON::Countdown { data, countdown } => todo!(),
+                            
+                            PrintJSON::Text { data } => {
+                                for d in data {
+                                    println!("{:?}", d);
+                                }
+                            }
+                        }
+                    }
+
+                    ServerMessage::DataPackage(data_package) => todo!(),
+                    ServerMessage::Bounced(bounced) => todo!(),
+                    ServerMessage::InvalidPacket(invalid_packet) => todo!(),
+                    ServerMessage::Retrieved(retrieved) => todo!(),
+                    ServerMessage::SetReply(set_reply) => todo!(),
+
+                    _ => println!("Recv'd packet: {:?}\n", msg),
+                }
             }
         }
     });
 
     let sender_task = tokio::spawn(async move {
-        loop {
+        // todo: send data to AP here
+        while let Some(data) = rx.recv().await {
 
         }
-
-        // todo: send data to AP here
     });
 
     tokio::select! {

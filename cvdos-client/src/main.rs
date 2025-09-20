@@ -41,7 +41,7 @@ fn inject() -> Result<(), Box<dyn Error>> {
 
             if remote_mem.is_null() {
                 println!("VirtualAllocEx failed: {:?}", GetLastError());
-                return Err(Box::new(windows::core::Error::from_win32()));
+                return Err(Box::new(windows::core::Error::from_thread()));
             }
 
             WriteProcessMemory(

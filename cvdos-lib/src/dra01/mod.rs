@@ -2,7 +2,7 @@ use std::{ffi::c_void, mem::transmute, path::PathBuf, sync::{Mutex, OnceLock}};
 use minhook::MinHook;
 use windows::{core::s, Win32::System::{LibraryLoader::GetModuleHandleA, Memory::{VirtualProtect, PAGE_EXECUTE_READWRITE, PAGE_PROTECTION_FLAGS, PAGE_READWRITE}}};
 
-use crate::dra01::{dll_offsets::Offset, game_data::{Enemy, EnmSetData, ObjAttr, OBJ_ATTR_LENGTH}, hooked_functions::{balore_defeat, dev_ev_08_00, dra_mesg_comm_get_message, enm_set_first, es_enemy_dead_sub}};
+use crate::dra01::{dll_offsets::Offset, game_data::{Enemy, EnmSetData, ObjAttr, OBJ_ATTR_LENGTH}, hooked_functions::{abaddon_defeat, balore_defeat, dev_ev_08_00, dra_mesg_comm_get_message, enm_set_first, es_enemy_dead_sub, es_soul_drop, gergoth_defeat, paranoia_defeat}};
 
 pub mod hooked_functions;
 pub mod game_data;
@@ -21,9 +21,13 @@ pub static DRA_MESG_COMM_GET_MESSAGE: OnceLock<extern "system" fn(u32) -> *const
 pub static ENM_SET_FIRST:             OnceLock<extern "system" fn(u64)>                     = OnceLock::new();
 pub static BALORE_DEFEAT:             OnceLock<extern "system" fn(*mut u64, u64, u64, u64)> = OnceLock::new();
 pub static G_ITEM_SET:                OnceLock<extern "system" fn(*const u64, u32, u32)>    = OnceLock::new();
-
-pub static G_ITEM_ADD_RMK_ITEM_NUM:   OnceLock<extern "system" fn(u32) -> bool> = OnceLock::new();
-pub static DEV_EV_08_00:              OnceLock<extern "system" fn (*const u8)>   = OnceLock::new();
+pub static G_ITEM_ADD_RMK_ITEM_NUM:   OnceLock<extern "system" fn(u32) -> bool>             = OnceLock::new();
+pub static DEV_EV_08_00:              OnceLock<extern "system" fn (*const u8)>              = OnceLock::new();
+pub static ES_SOUL_DROP:              OnceLock<extern "system" fn(*mut u8, *const u64)>     = OnceLock::new();
+pub static GERGOTH_DEFEAT:            OnceLock<extern "system" fn(*mut u8, u64, u64, u64)>  = OnceLock::new();
+pub static G_WINDOW_SET_ITEM_NAME:    OnceLock<extern "system" fn(i32, i32)>                = OnceLock::new();
+pub static PARANOIA_DEFEAT:           OnceLock<extern "system" fn(*mut u8, u64, u64, u64)>  = OnceLock::new();
+pub static ABADDON_DEFEAT:            OnceLock<extern "system" fn(*mut u8, u64, u64, u64)>  = OnceLock::new();
 
 // buffer for storing and displaying custom messages 
 // todo: does it (still) need mutex?
@@ -50,6 +54,9 @@ pub fn hook_functions() {
         let fn_offset = dll_offset(Offset::GItemSet);
         G_ITEM_SET.set(transmute(fn_offset)).expect("msg");
         // -----
+        let fn_offset = dll_offset(Offset::GWindowSetItemName);
+        G_WINDOW_SET_ITEM_NAME.set(transmute(fn_offset)).expect("msg");
+        // -----
 
         let fn_offset = dll_offset(Offset::DraMesgCommGetMessage);
         let orig_addr = MinHook::create_hook(fn_offset as _, dra_mesg_comm_get_message as _).expect("create_hook failed");
@@ -59,14 +66,29 @@ pub fn hook_functions() {
         let orig_addr = MinHook::create_hook(fn_offset as _, es_enemy_dead_sub as _).expect("create_hook failed");
         ES_ENEMY_DEAD_SUB.set(transmute(orig_addr)).expect("msg");
         // -----
-        let fn_offset = DLL_BASE + 0x1365A0;
+        let fn_offset = dll_offset(Offset::BaloreDefeat);
         let orig_addr = MinHook::create_hook(fn_offset as _, balore_defeat as _).expect("create_hook failed");
         BALORE_DEFEAT.set(transmute(orig_addr)).expect("msg");
         // -----
-
         let fn_offset = dll_offset(Offset::DevEv08_00);
         let orig_addr = MinHook::create_hook(fn_offset as _, dev_ev_08_00 as _).expect("create_hook failed");
         DEV_EV_08_00.set(transmute(orig_addr)).expect("msg");
+        // -----
+        let fn_offset = dll_offset(Offset::EsSoulDrop);
+        let orig_addr = MinHook::create_hook(fn_offset as _, es_soul_drop as _).expect("create_hook failed");
+        ES_SOUL_DROP.set(transmute(orig_addr)).expect("msg");
+        // -----
+        let fn_offset = dll_offset(Offset::GergothDefeat);
+        let orig_addr = MinHook::create_hook(fn_offset as _, gergoth_defeat as _).expect("create_hook failed");
+        GERGOTH_DEFEAT.set(transmute(orig_addr)).expect("msg");
+        // -----
+        let fn_offset = dll_offset(Offset::ParanoiaDefeat);
+        let orig_addr = MinHook::create_hook(fn_offset as _, paranoia_defeat as _).expect("create_hook failed");
+        PARANOIA_DEFEAT.set(transmute(orig_addr)).expect("msg");
+        // -----
+        let fn_offset = dll_offset(Offset::AbaddonDefeat);
+        let orig_addr = MinHook::create_hook(fn_offset as _, abaddon_defeat as _).expect("create_hook failed");
+        ABADDON_DEFEAT.set(transmute(orig_addr)).expect("msg");
         // -----
 
         if DEBUG {
@@ -82,12 +104,91 @@ pub fn hook_functions() {
 // patch dra01.dll in memory (temporary patch until dll unloads)
 pub fn patch_dra01() {
     if let Some(patch) = find_patch_file() {
+        luck_formula();
         apply_ap_patch(&patch);
         item_vanish_timer();
         balore_prevent_block_exit();
         println!("Found and applied patch {:?}", patch);
     } else {
         println!("No *.patch file found, no changes applied.");
+    }
+}
+
+fn luck_formula() {
+    // todo: "shl ax,05" multiplies luck by 32. replace with imul:
+    // imul eax,eax,<scaling_val> | imul r32,r32,imm8 (max scaling: 127)
+    // where <scaling_val> is an i8 passed into this function.
+
+    // todo: item2
+
+    // change the drop formula to make each point in luck give a linear increase.
+    // this makes luck give ~0.1% increase per point in luck.
+
+    // from: (scaled_soul_rarity + 1) / (32768 - scaled_luck)
+    // to:   (scaled_soul_rarity + 1 + scaled_luck) / 32768
+    let soul_drop_mod = [
+        // 14AB2E
+        0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00,                         // nop
+        0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00,                         // nop
+        0x66, 0xC1, 0xE0, 0x05,                                     // shl ax,05
+        0x4C, 0x89, 0x6C, 0x24, 0x58,                               // mov [rsp+58],r13
+        0xBA, 0x00, 0x80, 0x00, 0x00,                               // mov edx,00008000
+        0x0F, 0xBF, 0xE8,                                           // movsx ebp,ax
+        0x8B, 0xCA,                                                 // mov ecx,edx
+        0x4C, 0x8D, 0x25, 0xAC, 0x54, 0xEB, 0xFF,                   // lea r12,[dra01.dll]
+        0x45, 0x0F, 0xBE, 0x8C, 0xFC, 0xD2, 0x55, 0x27, 0x00,       // movsx r9d,byte ptr [r12+rdi*8+002755D2]
+        0x33, 0xDB,                                                 // xor ebx,ebx
+        0x41, 0xBD, 0x00, 0x10, 0x00, 0x00,                         // mov r13d,00001000
+        0x45, 0x84, 0xC9,                                           // test r9b,r9b
+        0x0F, 0x88, 0xA5, 0x00, 0x00, 0x00,                         // js dra01.dll+14AC13
+        0x41, 0x0F, 0xB6, 0x84, 0xFC, 0xCC, 0x55, 0x27, 0x00,       // movzx eax,byte ptr [r12+rdi*8+002755CC]
+        0x84, 0xC0,                                                 // test al,al
+        0x74, 0x47,                                                 // je dra01.dll+14ABC2
+        0x44, 0x8B, 0xC0,                                           // mov r8d,eax
+        0x41, 0xC1, 0xE0, 0x06,                                     // shl r8d,06
+        0x66, 0x83, 0x3D, 0x96, 0x99, 0x81, 0x00, 0x38,             // cmp word ptr [dra01.dll+964520],38
+        0x75, 0x08,                                                 // jne dra01.dll+14AB97
+        0x46, 0x8D, 0x04, 0x45, 0x08, 0x00, 0x00, 0x00,             // lea r8d,[r8*2+00000008]
+        0xF7, 0x05, 0x36, 0x93, 0x81, 0x00, 0x00, 0x00, 0x00, 0x10, // test [dra01.dll+963ED4],10000000
+        0x44, 0x0F, 0x45, 0xC2,                                     // cmovne r8d,edx
+        0x41, 0x01, 0xE8,                                           // add r8d,ebp
+        0xE8, 0xF6, 0xED, 0xEC, 0xFF,                               // call dra01.dll+199A0
+        0x41, 0x3B, 0xC0,                                           // cmp eax,r8d
+    ];
+
+    // from: scaled_item_rarity / (8192 - scaled_luck)
+    // to:   (scaled_item_rarity + scaled_luck) / 8192
+    let item1_drop_mod = [
+        // 14ACFF
+        0x44, 0x89, 0xD1,                                           // mov ecx,r10d
+        0xE8, 0x99, 0xEC, 0xEC, 0xFF,                               // call getRandF
+        0x8B, 0x0D, 0x51, 0x5F, 0xA3, 0x00,                         // mov ecx,dword ptr [dra01.dll+8EB244]
+        0xC1, 0xEA, 0x02,                                           // shr edx,0x2 +1
+        0x41, 0x01, 0xD0,                                           // add r8d,edx 
+        0x66, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00,       // nop
+        0x66, 0x2E, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, // nop
+        0x66, 0x2E, 0x0F, 0x1F, 0x84, 0x00, 0x00, 0x00, 0x00, 0x00, // nop
+        0x44, 0x39, 0xC0,                                           // cmp ebx,r8d
+    ];
+
+    unsafe {
+        let code_loc = (DLL_BASE + 0x14AB2E) as *mut u8;
+        let region_size = 0x14AD33 - 0x14AB2E;
+
+        match virtual_protect(code_loc as _, region_size, PAGE_EXECUTE_READWRITE) {
+            Ok(old_protect) => {
+                let region = std::slice::from_raw_parts_mut(code_loc, region_size);
+
+                region[0 .. soul_drop_mod.len()].copy_from_slice(&soul_drop_mod);
+
+                region[0x17A .. 0x17A + 3].copy_from_slice(&[0x89, 0xEA, 0x90]); // mov edx,ebp + nop 
+                region[0x1D1 .. 0x1D1 + item1_drop_mod.len()].copy_from_slice(&item1_drop_mod);
+
+                let _ = virtual_protect(code_loc as _, region_size, old_protect);
+            }
+
+            Err(e) => println!("failed to modify game: {}", e),
+        }
     }
 }
 
@@ -128,8 +229,6 @@ fn find_patch_file() -> Option<PathBuf> {
 }
 
 fn apply_ap_patch(path: &PathBuf) {
-    // todo: if mina item event room, call the new function
-
     let data = std::fs::read(path).expect("msg");
 
     let (obj_attr_list, old_protect) = obj_attr_get_list();
@@ -200,12 +299,14 @@ fn apply_ap_patch(path: &PathBuf) {
                     0x12 => { // soul
                         obj_attr_list[enm_id].soul_id = data[pos + 3];
 
-                        // balore has a hardcoded soul drop, so modify it here
+                        // some bosses have hardcoded soul drops, so modify here
+                        // todo: needed for more bosses...
                         if enm_id as u8 == Enemy::Balore.id() {
-                            unsafe {
-                                let p_balore_soul = (DLL_BASE + 0x1365DB) as *mut u8;
-                                *p_balore_soul = data[pos + 3];
-                            }
+                            balore_custom_soul_drop(data[pos + 3]);
+                        } else if enm_id as u8 == Enemy::Paranoia.id() {
+                            paranoia_custom_soul_drop(data[pos + 3]);
+                        } else if enm_id as u8 == Enemy::Abaddon.id() {
+                            abaddon_custom_soul_drop(data[pos + 3]);
                         }
                     }
 
@@ -221,6 +322,58 @@ fn apply_ap_patch(path: &PathBuf) {
     obj_attr_restore_protection_flags(old_protect);
 }
 
+// todo: consolidate *_custom_soul_drop functions
+fn balore_custom_soul_drop(soul_id: u8) {
+    unsafe {
+        let code_loc = (DLL_BASE + 0x1365DB) as *mut u8;
+        let region_size = 1;
+
+        match virtual_protect(code_loc as _, region_size, PAGE_EXECUTE_READWRITE) {
+            Ok(old_protect) => {
+                code_loc.write(soul_id);
+
+                let _ = virtual_protect(code_loc as _, region_size, old_protect);
+            }
+
+            Err(e) => println!("failed to modify game: {}", e),
+        }
+    }
+}
+
+fn paranoia_custom_soul_drop(soul_id: u8) {
+    unsafe {
+        let code_loc = (DLL_BASE + 0x12DA13) as *mut u8;
+        let region_size = 1;
+
+        match virtual_protect(code_loc as _, region_size, PAGE_EXECUTE_READWRITE) {
+            Ok(old_protect) => {
+                code_loc.write(soul_id);
+
+                let _ = virtual_protect(code_loc as _, region_size, old_protect);
+            }
+
+            Err(e) => println!("failed to modify game: {}", e),
+        }
+    }
+}
+
+fn abaddon_custom_soul_drop(soul_id: u8) {
+    unsafe {
+        let code_loc = (DLL_BASE + 0x18134B) as *mut u8;
+        let region_size = 1;
+
+        match virtual_protect(code_loc as _, region_size, PAGE_EXECUTE_READWRITE) {
+            Ok(old_protect) => {
+                code_loc.write(soul_id);
+
+                let _ = virtual_protect(code_loc as _, region_size, old_protect);
+            }
+
+            Err(e) => println!("failed to modify game: {}", e),
+        }
+    }
+}
+
 // modifications to the function DevEv08_00 to make Arikado give you a custom item
 fn minas_talisman_event_item(item_or_soul: u8, item_id: u8) {
     unsafe {
@@ -234,12 +387,12 @@ fn minas_talisman_event_item(item_or_soul: u8, item_id: u8) {
                 // 6-byte nop: overwrite mov that adds mina's talisman
                 region[0 .. 6].copy_from_slice(&[0x66, 0x0F, 0x1F, 0x44, 0x00, 0x00]);
 
-                let mut message = item_id as u16;
+                let mut message = item_id as u16 - 1;
 
                 MINA_DATA.1 = item_id;
 
                 if item_or_soul == 0x12 {
-                    message += 0x288;
+                    message += 0x289;
                     MINA_DATA.0 = true;
                 } else {
                     MINA_DATA.0 = false;

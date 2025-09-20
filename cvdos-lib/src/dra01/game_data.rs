@@ -43,24 +43,34 @@ pub struct MagicCirclePos {
 }
 
 pub enum Enemy {
-    Zombie,
-    Warg,
     FlyingArmor,
     Balore,
     Malphas,
     PuppetMaster,
+    Rahab,
+    Gergoth,
+    Zephyr,
+    Paranoia,
+    Aguni,
+    Death,
+    Abaddon,
 }
 
 impl Enemy {
     pub fn id(&self) -> u8 {
         use Enemy::*;
         match self {
-            Zombie => 0x00,
-            Warg => 0x08,
-            FlyingArmor => 0x65,
-            Balore => 0x66,
-            Malphas => 0x67,
+            FlyingArmor  => 0x65,
+            Balore       => 0x66,
+            Malphas      => 0x67,
             PuppetMaster => 0x6A,
+            Rahab        => 0x6B,
+            Gergoth      => 0x6C,
+            Zephyr       => 0x6D,
+            Paranoia     => 0x6F,
+            Aguni        => 0x70,
+            Death        => 0x71,
+            Abaddon      => 0x72,
         }
     }
 }
