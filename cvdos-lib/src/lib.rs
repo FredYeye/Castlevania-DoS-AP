@@ -1,18 +1,15 @@
-use std::{fs::File, io::{stdin, BufRead}, os::windows::io::FromRawHandle, sync::OnceLock, thread};
+use std::{fs::File, io::{stdin, BufRead}, os::windows::io::FromRawHandle, sync::OnceLock, thread, time::Duration};
 
+use archipelago_rs::{client::ArchipelagoClient, protocol::{ItemsHandlingFlags, ServerMessage}};
+use serde_json::Value;
 use tokio::sync::mpsc::{self, Sender};
-use tokio_tungstenite::tungstenite::Message;
 use windows::Win32::{
     Foundation::*,
-    System::{Console::{AllocConsole, GetStdHandle, STD_OUTPUT_HANDLE}, SystemServices::DLL_PROCESS_ATTACH},
+    System::{Console::{AllocConsole, GetStdHandle, STD_OUTPUT_HANDLE}, SystemServices::{DLL_PROCESS_ATTACH, DLL_PROCESS_DETACH}},
 };
 
-use crate::{
-    archipelago_rs::{client::ArchipelagoClient, protocol::{GameData, JSONMessagePart, PrintJSON, ServerMessage}},
-    dra01::{dll_offset, dll_offsets::Offset, hook_functions, hooked_functions::dra_mesg_comm_get_message, patch_dra01, CUSTOM_MSG, DLL_BASE, G_WINDOW_SET_MAIN_WINDOW},
-};
+use crate::dra01::{dll_offset, dll_offsets::Offset, hook_functions, hooked_functions::dra_mesg_comm_get_message, patch_dra01, CUSTOM_MSG, DLL_BASE, G_WINDOW_SET_MAIN_WINDOW};
 
-mod archipelago_rs;
 mod dra01;
 
 static mut STDOUT_FILE: Option<File> = None;
@@ -38,6 +35,10 @@ extern "system" fn DllMain(_dll_module: HINSTANCE, call_reason: u32, _: *mut ())
             });
         }
 
+        DLL_PROCESS_DETACH => {
+            println!("dra01.dll unloaded!");
+        }
+
         _ => ()
     }
 
@@ -56,12 +57,14 @@ async fn websocket() {
     let server = stdin().lock().lines().next().unwrap().expect("Failed to read server name");
 
     println!("Enter slot (player) name:");
-    let slot = stdin().lock().lines().next().unwrap().expect("Failed to slot name");
+    let slot = stdin().lock().lines().next().unwrap().expect("Failed to read slot name");
 
-    let mut client = ArchipelagoClient::new(&server).await.expect("Failed to establish connection");
+    let mut client: ArchipelagoClient<Value> = ArchipelagoClient::new(&server).await.expect("Failed to establish connection");
     let game = "cvdos";
+    let item_flags = ItemsHandlingFlags::all();
+
     client
-        .connect(&game, &slot, None, Some(7), vec!["AP".to_string()])
+        .connect(&game, &slot, None, item_flags, vec!["AP".to_string()])
         .await.expect("Failed to connect");
 
     let (sender, mut receiver) = client.split();
@@ -85,45 +88,6 @@ async fn websocket() {
                     ServerMessage::LocationInfo(location_info) => todo!(),
                     ServerMessage::RoomUpdate(room_update) => todo!(),
                     ServerMessage::Print(print) => todo!(),
-
-                    ServerMessage::PrintJSON(print_json) => {
-                        match print_json {
-                            PrintJSON::ItemSend { data, receiving, item } => todo!(),
-                            PrintJSON::ItemCheat { data, receiving, item, team } => todo!(),
-                            PrintJSON::Hint { data, receiving, item, found } => todo!(),
-                            
-                            PrintJSON::Join { data, team, slot, tags } => {
-                                for d in data {
-                                    println!("{:?}", d);
-                                }
-                            }
-
-                            PrintJSON::Part { data, team, slot } => todo!(),
-                            PrintJSON::Chat { data, team, slot, message } => todo!(),
-                            PrintJSON::ServerChat { data, message } => todo!(),
-                            
-                            PrintJSON::Tutorial { data } => {
-                                for d in data {
-                                    println!("{:?}", d);
-                                }
-                            }
-                            
-                            PrintJSON::TagsChanged { data, team, slot, tags } => todo!(),
-                            PrintJSON::CommandResult { data } => todo!(),
-                            PrintJSON::AdminCommandResult { data } => todo!(),
-                            PrintJSON::Goal { data, team, slot } => todo!(),
-                            PrintJSON::Release { data, team, slot } => todo!(),
-                            PrintJSON::Collect { data, team, slot } => todo!(),
-                            PrintJSON::Countdown { data, countdown } => todo!(),
-                            
-                            PrintJSON::Text { data } => {
-                                for d in data {
-                                    println!("{:?}", d);
-                                }
-                            }
-                        }
-                    }
-
                     ServerMessage::DataPackage(data_package) => todo!(),
                     ServerMessage::Bounced(bounced) => todo!(),
                     ServerMessage::InvalidPacket(invalid_packet) => todo!(),
@@ -143,9 +107,40 @@ async fn websocket() {
         }
     });
 
+    let tx2 = tx.clone();
+    let bitmask_task = tokio::spawn(async move {
+        let mut flags_set = [0; 5]; // size?
+        loop {
+            // todo: use item flags! instead of global
+            let ptr = dll_offset(Offset::FlagsGlobal) as *const u8;
+            let region = unsafe { std::slice::from_raw_parts(ptr, 5) };
+            // check global flags here. if flags we care about are set, send a message.
+            // also, keep track of flags so we don't send stuff to the server all the time.
+            for x in 0 .. flags_set.len() {
+                if flags_set[x] != region[x] {
+                    for bit in 0 .. 8 {
+                        let flag1 = (flags_set[x] >> bit) != 0;
+                        let flag2 = (region[x] >> bit) != 0;
+                        if !flag1 && flag2 {
+                            flags_set[x] |= 1 << bit;
+                            // todo: send message to server based on what item flag was set
+                        }
+                    }
+                    let diff = flags_set[x] ^ region[x];
+                    println!("flags[{}] diff: {:08b}", x, diff);
+                }
+            }
+
+            // let _ = tx2.send(vec![1]).await;
+            println!("current flags: {:?}", region);
+            tokio::time::sleep(Duration::from_secs(4)).await;
+        }
+    });
+
     tokio::select! {
         _ = receiver_task => println!("Reader exited"),
         _ = sender_task => println!("Writer exited"),
+        _ = bitmask_task => println!("Bitmask exited"),
     }
 }
 
